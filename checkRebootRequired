@@ -3,15 +3,45 @@
 # Extract Hostnames from SSH Config
 hosts=$(grep "^Host " ~/.ssh/config | awk '{print $2}')
 
+# Create a temporary file to store outputs
+output_file=$(mktemp)
+
+# ANSI Color Codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+
 # Loop Through Hosts
 for host in $hosts
 do
-    echo "Checking $host..."
-    
-    # SSH into Host and Check for Reboot Requirement
-    ssh -o BatchMode=yes -o ConnectTimeout=5 $host "if [ -f /var/run/reboot-required ]; then echo '$host: Reboot Required'; else echo '$host: No Reboot Required'; fi" &
-    
+    # Using subshell to manage background processes and prevent message intermingling
+    (
+        # Suppressing known_hosts warnings/errors for cleaner output
+        output=$(ssh -o BatchMode=yes -o ConnectTimeout=5 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $host "if [ -f /var/run/reboot-required ]; then echo 'Reboot Required'; else echo 'No Reboot Required'; fi" 2>/dev/null)
+        
+        # Check the ssh command exit status
+        if [ $? -eq 0 ]; then
+            if [[ $output == "Reboot Required" ]]; then
+                # Red color for Reboot Required
+                echo -e "$host: ${RED}$output${NC}" >> "$output_file"
+            else
+                # Green color for No Reboot Required
+                echo -e "$host: ${GREEN}$output${NC}" >> "$output_file"
+            fi
+        else
+            # Red color for SSH Failed
+            echo -e "$host: ${RED}SSH Failed${NC}" >> "$output_file"
+        fi
+    ) &> /dev/null &
 done
 
 # Wait for All Background SSH Calls to Complete
 wait
+
+# Output the results
+cat "$output_file"
+
+# Remove the temporary file
+rm -f "$output_file"
+
+echo "All hosts checked."
