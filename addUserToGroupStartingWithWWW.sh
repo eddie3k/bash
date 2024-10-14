@@ -8,15 +8,15 @@ fi
 
 USERNAME=$1
 
-# Find all groups starting with 'www.' and extract group names into an array
-mapfile -t GROUPS_ARRAY < <(getent group | grep '^www\.' | cut -d: -f1)
+# Find all groups ending with '.hcweb.dev' and extract group names into an array
+mapfile -t GROUPS_ARRAY < <(getent group | grep ".hcweb.dev" | cut -d: -f1)
 
 # Debug: Output found groups
 echo "Debug: Found groups - [${GROUPS_ARRAY[@]}]"
 
-# Check if there are any groups that start with 'www.'
+# Check if there are any groups that end with '.hcweb.dev'
 if [ ${#GROUPS_ARRAY[@]} -eq 0 ]; then
-  echo "No groups starting with 'www.' found."
+  echo "No groups ending with '.hcweb.dev' found."
   exit 1
 fi
 
